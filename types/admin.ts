@@ -27,3 +27,24 @@ export interface CreateAdminPayload {
   username: string;
   password: string;
 }
+
+export type AdminListResponse = {
+  data: Admin[];
+  count: number;
+  page: number;
+  quantity: number;
+};
+
+export interface CreateAdminPayload {
+  name: string;
+  username: string;
+  password: string;
+  phone: string;
+}
+
+export interface UpdateAdminPayload {
+  name?: string;
+  phone?: string;
+  username?: string;
+  password?: string;
+}

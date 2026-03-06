@@ -2,22 +2,17 @@
 
 import * as React from "react"
 import {
-  BookOpen,
-  Bot,
-  Command,
-  Frame,
-  LifeBuoy,
-  Map,
-  PieChart,
-  Send,
-  Settings2,
-  SquareTerminal,
+  LayoutDashboard,
+  Users,
+  ShieldCheck,
+  Layers,
+  FileText,
+  CreditCard,
+  Droplets,
 } from "lucide-react"
 
 import { Admin } from "@/types/admin"
-
 import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 
 import {
@@ -25,51 +20,86 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
+  SidebarRail,
+  SidebarSeparator,
 } from "@/components/ui/sidebar"
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   admin: Admin | null
 }
 
-const data = {
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "/dashboard",
-      icon: SquareTerminal,
-    },
-  ],
-}
+const navItems = [
+  {
+    title: "Dashboard",
+    url: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Admins",
+    url: "/dashboard/admins",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Customers",
+    url: "/dashboard/customers",
+    icon: Users,
+  },
+  {
+    title: "Services",
+    url: "/dashboard/services",
+    icon: Layers,
+  },
+  {
+    title: "Bills",
+    url: "/dashboard/bills",
+    icon: FileText,
+  },
+  {
+    title: "Payments",
+    url: "/dashboard/payments",
+    icon: CreditCard,
+  },
+]
 
 export function AppSidebar({ admin, ...props }: AppSidebarProps) {
-
   return (
+    <Sidebar variant="inset" {...props}>
 
-    <Sidebar variant="inset" {...props} >
-      <SidebarHeader>
-        <div className="flex gap-2">
-          <div className="flex aspect-square size-12 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Command className="size-4" />
+      {/* ── Header / Logo ── */}
+      <SidebarHeader className="pb-4">
+        <div className="flex items-center gap-3 px-1 py-2">
+          {/* Logo icon */}
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sidebar-primary shadow-sm">
+            <Droplets size={20} className="text-sidebar-primary-foreground" />
           </div>
-          <div className="grid flex-1 text-left text-2xl leading-tight">
-            <span className="truncate font-medium">
+          {/* Brand text */}
+          <div className="flex flex-col leading-tight">
+            <span className="text-base font-bold tracking-tight text-sidebar-foreground">
               PDAM Smart
             </span>
-            <span className="truncate text-sm">
-              Dashboard
+            <span className="text-xs text-sidebar-foreground/50">
+              Admin Dashboard
             </span>
           </div>
         </div>
-        
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
+
+      <SidebarSeparator />
+
+      {/* ── Navigation ── */}
+      <SidebarContent className="pt-2">
+        {/* Label */}
+        <p className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+          Menu
+        </p>
+        <NavMain items={navItems} />
       </SidebarContent>
-      <SidebarFooter>
-        {admin && (
+
+      <SidebarSeparator />
+
+      {/* ── Footer / User ── */}
+      <SidebarFooter className="pt-2">
+        {admin ? (
           <NavUser
             user={{
               name: admin.name,
@@ -77,8 +107,19 @@ export function AppSidebar({ admin, ...props }: AppSidebarProps) {
               avatar: "",
             }}
           />
+        ) : (
+          // Skeleton saat admin belum load
+          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+            <div className="h-8 w-8 animate-pulse rounded-lg bg-sidebar-accent" />
+            <div className="flex flex-col gap-1.5 flex-1">
+              <div className="h-2.5 w-24 animate-pulse rounded bg-sidebar-accent" />
+              <div className="h-2 w-16 animate-pulse rounded bg-sidebar-accent" />
+            </div>
+          </div>
         )}
       </SidebarFooter>
+
+      <SidebarRail />
     </Sidebar>
   )
 }
