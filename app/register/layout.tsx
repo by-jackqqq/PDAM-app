@@ -1,6 +1,6 @@
 export const metadata = {
-  title: 'Login | PDAM',
-  description: 'Register PDAM Smart',
+  title: 'Register | PDAM',
+  description: 'Login PDAM Smart',
 }
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => {

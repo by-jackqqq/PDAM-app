@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import Navbar from "../components/home/Navbar"
-import { Droplets } from "lucide-react"
+import Link from "next/link"
 
 const LoginPage = () => {
   const [username, setUsername] = React.useState("")
@@ -117,6 +117,13 @@ const LoginPage = () => {
           >
             Login
           </button>
+
+          <div className="text-center text-md text-blue-600 flex gap-1 justify-center mt-4">
+            <p>Not a member?</p>
+            <Link href="/register" className="font-medium underline">
+              Register Now!
+            </Link>
+          </div>
 
           {/* Footer */}
           <p className="text-center text-xs text-slate-400 mt-6">
