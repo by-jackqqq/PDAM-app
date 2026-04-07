@@ -23,8 +23,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import AdminFormModal from "@/app/components/dashboard/admins/admin-form-modal"
-import AdminDeleteDialog from "@/app/components/dashboard/admins/admin-delete-dialog"
+import AdminFormModal from "@/app/components/admin/admins/AdminFormModal"
+import AdminDeleteDialog from "@/app/components/admin/admins/AdminDeleteDialog"
 
 const PAGE_SIZE = 5
 
@@ -35,8 +35,8 @@ function getPageNumbers(current: number, total: number) {
   return [1, "…", current - 1, current, current + 1, "…", total]
 }
 
-export default function AdminPage() {
-  const [allAdmins, setAllAdmins] = useState<Admin[]>([])  // semua data dari API
+export default function AdminsPage() {
+  const [allAdmins, setAllAdmins] = useState<Admin[]>([])
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
   const [loading, setLoading] = useState(true)
@@ -45,12 +45,11 @@ export default function AdminPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [selected, setSelected] = useState<Admin | null>(null)
 
-  // ✅ Ambil SEMUA data sekaligus — tanpa page/quantity
   const fetchAdmins = useCallback(async () => {
     setLoading(true)
     try {
       const res = await api.get<AdminListResponse>("/admins", {
-        params: { page: 1, quantity: 9999 }, // quantity besar = ambil semua
+        params: { page: 1, quantity: 9999 },
       })
       setAllAdmins(res.data.data ?? [])
     } finally {
@@ -59,21 +58,17 @@ export default function AdminPage() {
   }, [])
 
   useEffect(() => { fetchAdmins() }, [fetchAdmins])
-
-  // Reset page ke 1 setiap kali search berubah
   useEffect(() => { setPage(1) }, [search])
 
-  // ── Filter & paginate di client ──────────────────────────────────────────
+  // Filter & paginate di client
   const filtered = allAdmins.filter(a =>
     a.name.toLowerCase().includes(search.toLowerCase()) ||
     a.user.username.toLowerCase().includes(search.toLowerCase())
   )
-
   const total = filtered.length
   const totalPages = Math.ceil(total / PAGE_SIZE)
   const pages = getPageNumbers(page, totalPages)
   const admins = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
-  // ────────────────────────────────────────────────────────────────────────
 
   const openCreate = () => { setSelected(null); setFormOpen(true) }
   const openEdit = (a: Admin) => { setSelected(a); setFormOpen(true) }
@@ -84,13 +79,14 @@ export default function AdminPage() {
 
   return (
     <>
-      <div className="space-y-5">
+      <div className="p-6 space-y-5">
+        {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Admin Management</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Manage all admin accounts</p>
           </div>
-          <Button size="sm" className="gap-1.5 shrink-0" onClick={openCreate}>
+          <Button size="sm" className="gap-1.5 shrink-0 bg-blue-600 hover:bg-blue-700" onClick={openCreate}>
             <Plus size={15} /> Add Admin
           </Button>
         </div>
@@ -143,6 +139,7 @@ export default function AdminPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {/* Loading skeleton */}
               {loading && [...Array(5)].map((_, i) => (
                 <TableRow key={i} className="hover:bg-transparent">
                   <TableCell><Skeleton className="h-3.5 w-4 mx-auto" /></TableCell>
@@ -164,6 +161,7 @@ export default function AdminPage() {
                 </TableRow>
               ))}
 
+              {/* Empty state */}
               {!loading && admins.length === 0 && (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={6}>
@@ -183,6 +181,7 @@ export default function AdminPage() {
                 </TableRow>
               )}
 
+              {/* Data rows */}
               {!loading && (
                 <AnimatePresence>
                   {admins.map((admin, i) => (
@@ -199,7 +198,7 @@ export default function AdminPage() {
                       <TableCell>
                         <div className="flex items-center gap-2.5">
                           <Avatar className="h-8 w-8 shrink-0">
-                            <AvatarFallback className="bg-primary/10 text-primary text-[11px] font-semibold">
+                            <AvatarFallback className="bg-blue-100 text-blue-600 text-[11px] font-semibold">
                               {initials(admin.name)}
                             </AvatarFallback>
                           </Avatar>
@@ -213,8 +212,8 @@ export default function AdminPage() {
                         {admin.phone}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="secondary"
-                          className="text-[11px] bg-primary/10 text-primary border-0 font-medium capitalize">
+                        <Badge
+                          className="text-[11px] bg-blue-100 text-blue-600 border-0 font-medium capitalize hover:bg-blue-100">
                           {admin.user.role}
                         </Badge>
                       </TableCell>
@@ -249,7 +248,6 @@ export default function AdminPage() {
                 </span>{" "}
                 of <span className="font-medium text-foreground">{total}</span> admins
               </p>
-
               <Pagination className="w-auto mx-0">
                 <PaginationContent>
                   <PaginationItem>
@@ -258,12 +256,9 @@ export default function AdminPage() {
                       className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                     />
                   </PaginationItem>
-
                   {pages.map((p, i) =>
                     p === "…" ? (
-                      <PaginationItem key={`ellipsis-${i}`}>
-                        <PaginationEllipsis />
-                      </PaginationItem>
+                      <PaginationItem key={`e-${i}`}><PaginationEllipsis /></PaginationItem>
                     ) : (
                       <PaginationItem key={p}>
                         <PaginationLink
@@ -276,7 +271,6 @@ export default function AdminPage() {
                       </PaginationItem>
                     )
                   )}
-
                   <PaginationItem>
                     <PaginationNext
                       onClick={() => setPage(p => Math.min(totalPages, p + 1))}

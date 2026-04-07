@@ -249,18 +249,18 @@ export default function DashboardPage() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const statCards = [
-    { label: "Total Admins", value: stats.admins, icon: UserStar, color: "bg-violet-500", href: "/dashboard/admins", delay: 0 },
-    { label: "Total Customers", value: stats.customers, icon: Users, color: "bg-emerald-500", href: "/dashboard/customers", delay: 0.05 },
-    { label: "Total Services", value: stats.services, icon: Toolbox, color: "bg-blue-500", href: "/dashboard/services", delay: 0.1 },
-    { label: "Total Bills", value: stats.bills, icon: Receipt, color: "bg-orange-500", href: "/dashboard/bills", delay: 0.15 },
-    { label: "Total Payments", value: stats.payments, icon: Wallet, color: "bg-pink-500", href: "/dashboard/payments", delay: 0.2 },
+    { label: "Total Admins", value: stats.admins, icon: UserStar, color: "bg-violet-500", href: "/admin/admins", delay: 0 },
+    { label: "Total Customers", value: stats.customers, icon: Users, color: "bg-emerald-500", href: "/admin/customers", delay: 0.05 },
+    { label: "Total Services", value: stats.services, icon: Toolbox, color: "bg-blue-500", href: "/admin/services", delay: 0.1 },
+    { label: "Total Bills", value: stats.bills, icon: Receipt, color: "bg-orange-500", href: "/admin/bills", delay: 0.15 },
+    { label: "Total Payments", value: stats.payments, icon: Wallet, color: "bg-pink-500", href: "/admin/payments", delay: 0.2 },
   ]
 
   const quickActions = [
-    { label: "Add Admin", icon: UserStar, color: "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20", href: "/dashboard/admins?action=create" },
-    { label: "Add Customer", icon: Users, color: "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20", href: "/dashboard/customers?action=create" },
-    { label: "Create Bill", icon: Receipt, color: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20", href: "/dashboard/bills?action=create" },
-    { label: "Add Payment", icon: Wallet, color: "bg-pink-500/10 text-pink-600 hover:bg-pink-500/20", href: "/dashboard/payments?action=create" },
+    { label: "Add Admin", icon: UserStar, color: "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20", href: "/admin/admins?action=create" },
+    { label: "Add Customer", icon: Users, color: "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20", href: "/admin/customers?action=create" },
+    { label: "Create Bill", icon: Receipt, color: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20", href: "/admin/bills?action=create" },
+    { label: "Add Payment", icon: Wallet, color: "bg-pink-500/10 text-pink-600 hover:bg-pink-500/20", href: "/admin/payments?action=create" },
   ]
 
   return (
@@ -271,7 +271,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Welcome back! Here's what's happening today.
+            Welcome back! Heres whats happening today.
           </p>
         </div>
         <Button variant="outline" size="sm" className="gap-1.5 shrink-0"
@@ -411,7 +411,7 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold">Recent Bills</p>
               <p className="text-xs text-muted-foreground">Latest 5 bills</p>
             </div>
-            <Link href="/dashboard/bills">
+            <Link href="/admin/bills">
               <Button variant="ghost" size="sm" className="text-xs h-7 gap-1">View all <ArrowRight size={11} /></Button>
             </Link>
           </div>
@@ -459,7 +459,7 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold">Recent Payments</p>
               <p className="text-xs text-muted-foreground">Latest 5 transactions</p>
             </div>
-            <Link href="/dashboard/payments">
+            <Link href="/admin/payments">
               <Button variant="ghost" size="sm" className="text-xs h-7 gap-1">View all <ArrowRight size={11} /></Button>
             </Link>
           </div>

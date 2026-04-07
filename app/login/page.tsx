@@ -31,22 +31,39 @@ const LoginPage = () => {
         },
       })
 
-      toast.success("Login successful", {
-        autoClose: 1500,
+      // Ambil role dari response — sesuaikan field jika API berbeda
+      const rawRole: string = data.role ?? data.user?.role
+
+      if (!rawRole) {
+        toast.error("Login gagal: role tidak ditemukan dari server.", {
+          hideProgressBar: true,
+        })
+        return
+      }
+
+      // Normalisasi ke lowercase agar konsisten dengan middleware
+      const role = rawRole.toLowerCase()
+
+      // Simpan ke cookie — HARUS lewat storeCookie agar middleware bisa baca
+      storeCookie("token", data.token)
+      storeCookie("role", role)
+
+      toast.success("Login berhasil!", {
+        autoClose: 1000,
         hideProgressBar: true,
       })
 
-      storeCookie("token", data.token)
-      storeCookie("role", "ADMIN")
-
-      setTimeout(() => router.push("/dashboard"), 1000)
+      // Redirect berdasarkan role
+      setTimeout(() => {
+        router.push(role === "admin" ? "/admin" : "/customer")
+      }, 1000)
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        toast.error(error.response?.data?.message || "Login failed", {
+        toast.error(error.response?.data?.message || "Login gagal", {
           hideProgressBar: true,
         })
       } else {
-        toast.error("Unexpected error occurred", {
+        toast.error("Terjadi kesalahan, silakan coba lagi.", {
           hideProgressBar: true,
         })
       }
@@ -63,9 +80,7 @@ const LoginPage = () => {
           onSubmit={handleSubmit}
           className="w-full max-w-md bg-white/80 backdrop-blur border border-slate-200 rounded-2xl shadow-xl p-8"
         >
-          {/* Header */}
           <div className="text-center mb-8 flex-col justify-center">
-            
             <h1 className="text-2xl font-bold text-slate-800">
               Login PDAM Smart
             </h1>
@@ -74,7 +89,6 @@ const LoginPage = () => {
             </p>
           </div>
 
-          {/* Username */}
           <div className="mb-4">
             <label className="text-sm font-medium text-slate-600">
               Username
@@ -87,7 +101,6 @@ const LoginPage = () => {
             />
           </div>
 
-          {/* Password */}
           <div className="mb-2">
             <label className="text-sm font-medium text-slate-600">
               Password
@@ -110,7 +123,6 @@ const LoginPage = () => {
             </div>
           </div>
 
-          {/* Submit */}
           <button
             type="submit"
             className="mt-6 w-full rounded-full bg-blue-600 text-white py-3 font-semibold shadow-lg hover:bg-blue-700 hover:-translate-y-0.5 transition"
@@ -125,7 +137,6 @@ const LoginPage = () => {
             </Link>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-xs text-slate-400 mt-6">
             © 2025 PDAM Smart • Secure Water Service
           </p>

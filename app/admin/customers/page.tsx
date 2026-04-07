@@ -23,8 +23,8 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination"
-import CustomerFormModal from "@/app/components/dashboard/customers/customer-form-modal"
-import CustomerDeleteDialog from "@/app/components/dashboard/customers/customer-delete-dialog"
+import CustomerFormModal from "@/app/components/admin/customers/CustomerFormModal"
+import CustomerDeleteDialog from "@/app/components/admin/customers/CustomerDeleteDialog"
 
 const PAGE_SIZE = 10
 
@@ -35,7 +35,7 @@ function getPageNumbers(current: number, total: number) {
     return [1, "…", current - 1, current, current + 1, "…", total]
 }
 
-export default function CustomerPage() {
+export default function CustomersPage() {
     const [allCustomers, setAllCustomers] = useState<Customer[]>([])
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState("")
@@ -45,7 +45,6 @@ export default function CustomerPage() {
     const [deleteOpen, setDeleteOpen] = useState(false)
     const [selected, setSelected] = useState<Customer | null>(null)
 
-    // ✅ Ambil semua data customer sekaligus
     const fetchCustomers = useCallback(async () => {
         setLoading(true)
         try {
@@ -81,13 +80,14 @@ export default function CustomerPage() {
 
     return (
         <>
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
+                {/* Header */}
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Customer Management</h1>
                         <p className="text-sm text-muted-foreground mt-0.5">Manage all customer accounts</p>
                     </div>
-                    <Button size="sm" className="gap-1.5 shrink-0" onClick={openCreate}>
+                    <Button size="sm" className="gap-1.5 shrink-0 bg-blue-600 hover:bg-blue-700" onClick={openCreate}>
                         <Plus size={15} /> Add Customer
                     </Button>
                 </div>
@@ -224,8 +224,8 @@ export default function CustomerPage() {
                                             </TableCell>
                                             <TableCell>
                                                 {customer.service ? (
-                                                    <Badge variant="secondary"
-                                                        className="text-[11px] bg-emerald-500/10 text-emerald-600 border-0 font-medium">
+                                                    <Badge
+                                                        className="text-[11px] bg-emerald-500/10 text-emerald-600 border-0 font-medium hover:bg-emerald-500/10">
                                                         {customer.service.name}
                                                     </Badge>
                                                 ) : (
@@ -273,9 +273,7 @@ export default function CustomerPage() {
                                     </PaginationItem>
                                     {pages.map((p, i) =>
                                         p === "…" ? (
-                                            <PaginationItem key={`ellipsis-${i}`}>
-                                                <PaginationEllipsis />
-                                            </PaginationItem>
+                                            <PaginationItem key={`e-${i}`}><PaginationEllipsis /></PaginationItem>
                                         ) : (
                                             <PaginationItem key={p}>
                                                 <PaginationLink

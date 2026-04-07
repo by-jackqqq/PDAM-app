@@ -31,32 +31,32 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
 const navItems = [
   {
     title: "Dashboard",
-    url: "/dashboard",
+    url: "/admin",
     icon: LayoutDashboard,
   },
   {
     title: "Admins",
-    url: "/dashboard/admins",
+    url: "/admin/admins",
     icon: ShieldCheck,
   },
   {
     title: "Customers",
-    url: "/dashboard/customers",
+    url: "/admin/customers",
     icon: Users,
   },
   {
     title: "Services",
-    url: "/dashboard/services",
+    url: "/admin/services",
     icon: Layers,
   },
   {
     title: "Bills",
-    url: "/dashboard/bills",
+    url: "/admin/bills",
     icon: FileText,
   },
   {
     title: "Payments",
-    url: "/dashboard/payments",
+    url: "/admin/payments",
     icon: CreditCard,
   },
 ]

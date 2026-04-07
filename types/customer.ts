@@ -1,61 +1,50 @@
-export type Customer = {
+// types/customer.ts
+
+export interface CustomerUser {
   id: number;
-  name: string;
-  phone: string;
-  address: string;
-  customer_number: string;
-  service_id: number;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    username: string;
-    role: string;
-  };
-  service?: {
-    id: number;
-    name: string;
-  };
-};
-
-// Response GET /customers
-export type CustomerListResponse = {
-  success: boolean;
-  message: string;
-  data: Customer[];
-  count: number;
-};
-
-export type CreateCustomerPayload = {
-  name: string;
   username: string;
-  phone: string;
-  password: string;
-  customer_number: string;
-  address: string;
-  service_id: number;
-};
+  role: string;
+}
 
-export type UpdateCustomerPayload = {
-  name?: string;
-  username?: string;
-  phone?: string;
-  password?: string;
-  customer_number?: string;
-  address?: string;
-  service_id?: number;
-};
-
-export type Service = {
+export interface CustomerService {
   id: number;
   name: string;
   min_usage: number;
   max_usage: number;
   price: number;
-};
+}
 
-export type ServiceListResponse = {
-  success: boolean;
-  message: string;
-  data: Service[];
-  count: number;
-};
+export interface Customer {
+  id: number;
+  name: string;
+  phone: string;
+  address: string;
+  customer_number: string; // NIK
+  service_id: number;
+  user: CustomerUser;
+  service: CustomerService | null;
+}
+
+export interface CustomerListResponse {
+  data: Customer[];
+  total: number;
+  page: number;
+  quantity: number;
+}
+
+export interface CreateCustomerPayload {
+  username: string;
+  password: string;
+  name: string;
+  phone: string;
+  address: string;
+  customer_number: string;
+  service_id: number;
+}
+
+export interface UpdateCustomerPayload {
+  name?: string;
+  phone?: string;
+  address?: string;
+  password?: string;
+}

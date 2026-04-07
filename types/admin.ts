@@ -1,3 +1,5 @@
+// types/admin.ts
+
 export interface AdminUser {
   id: number;
   username: string;
@@ -6,45 +8,29 @@ export interface AdminUser {
 
 export interface Admin {
   id: number;
-  user_id: number;
   name: string;
   phone: string;
-  owner_token: string;
-  createdAt: string;
-  updatedAt: string;
   user: AdminUser;
 }
 
-export interface UpdateProfilePayload {
-  name: string;
-  phone: string;
-  username: string;
-  password?: string;
-}
-
-export interface CreateAdminPayload {
-  name: string;
-  username: string;
-  password: string;
-}
-
-export type AdminListResponse = {
+export interface AdminListResponse {
   data: Admin[];
-  count: number;
+  total: number;
   page: number;
   quantity: number;
-};
+}
 
+// Payload untuk create
 export interface CreateAdminPayload {
-  name: string;
   username: string;
   password: string;
+  name: string;
   phone: string;
 }
 
+// Payload untuk update (semua opsional)
 export interface UpdateAdminPayload {
   name?: string;
   phone?: string;
-  username?: string;
   password?: string;
 }
