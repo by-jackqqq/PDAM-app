@@ -3,9 +3,9 @@
 import { useEffect, useState, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
-  Users,  Receipt, Toolbox, 
+  Users, Receipt, Toolbox,
   TrendingUp, RefreshCw, ArrowRight, CheckCircle2, Clock, XCircle,
-  Plus, Activity, UserPlus, FilePlus, Wallet, UserStar
+  Plus, Activity, UserPlus, FilePlus, Wallet, UserStar, Droplets
 } from "lucide-react"
 import Link from "next/link"
 import { api } from "@/lib/api"
@@ -18,7 +18,7 @@ import {
   Tooltip, ResponsiveContainer,
 } from "recharts"
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ──────────────────────────────────────────────────────────────────
 type StatsState = {
   admins: number; customers: number; services: number
   bills: number; payments: number
@@ -35,13 +35,8 @@ type RecentPayment = {
   bill?: { customer?: { name: string } }
 }
 
-type RecentAdmin = {
-  id: number; name: string; createdAt?: string
-}
-
-type RecentCustomer = {
-  id: number; name: string; createdAt?: string
-}
+type RecentAdmin = { id: number; name: string; createdAt?: string }
+type RecentCustomer = { id: number; name: string; createdAt?: string }
 
 type ActivityItem = {
   id: string
@@ -54,7 +49,7 @@ type ActivityItem = {
 
 type MonthlyData = { month: string; bills: number; payments: number }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────────────────────────
 function formatPrice(n: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency", currency: "IDR", maximumFractionDigits: 0,
@@ -81,21 +76,48 @@ function initials(name: string) {
   return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-function StatCard({ label, value, icon: Icon, color, href, loading, delay = 0 }: {
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return "Selamat pagi"
+  if (h < 17) return "Selamat siang"
+  return "Selamat malam"
+}
+
+function getToday() {
+  return new Date().toLocaleDateString("id-ID", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  })
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────────────
+function StatCard({ label, value, icon: Icon, gradient, href, loading, delay = 0 }: {
   label: string; value: number; icon: React.ElementType
-  color: string; href: string; loading: boolean; delay?: number
+  gradient: string; href: string; loading: boolean; delay?: number
 }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.3 }}>
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay, duration: 0.35 }}>
       <Link href={href}>
-        <div className="rounded-2xl border border-border bg-card p-5 hover:shadow-md hover:border-primary/20 transition-all cursor-pointer group">
+        <div className="
+          relative rounded-2xl border border-border bg-card p-5
+          hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200
+          cursor-pointer group overflow-hidden
+        ">
+          {/* Top gradient accent */}
+          <div className={`absolute top-0 left-0 right-0 h-[3px] ${gradient} rounded-t-2xl`} />
+
           <div className="flex items-start justify-between">
-            <div className={`h-10 w-10 rounded-xl ${color} flex items-center justify-center`}>
-              <Icon size={18} className="text-white" />
+            <div className={`h-10 w-10 rounded-xl ${gradient} bg-opacity-15 flex items-center justify-center`}
+              style={{ background: "transparent" }}>
+              <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${gradient}`}>
+                <Icon size={18} className="text-white" />
+              </div>
             </div>
-            <ArrowRight size={14} className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+            <ArrowRight
+              size={14}
+              className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all"
+            />
           </div>
+
           <div className="mt-4">
             {loading
               ? <Skeleton className="h-8 w-16 mb-1" />
@@ -114,7 +136,7 @@ function StatusBadge({ status }: { status?: string }) {
   if (s === "verified" || s === "paid")
     return <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-0 gap-1"><CheckCircle2 size={10} />{status}</Badge>
   if (s === "pending")
-    return <Badge className="text-[10px] bg-yellow-500/10 text-yellow-600 border-0 gap-1"><Clock size={10} />{status}</Badge>
+    return <Badge className="text-[10px] bg-amber-500/10 text-amber-600 border-0 gap-1"><Clock size={10} />{status}</Badge>
   return <Badge className="text-[10px] bg-red-500/10 text-red-600 border-0 gap-1"><XCircle size={10} />{status ?? "—"}</Badge>
 }
 
@@ -128,7 +150,7 @@ function activityIcon(type: ActivityItem["type"]) {
   return map[type]
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Page ───────────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const [stats, setStats] = useState<StatsState>({ admins: 0, customers: 0, services: 0, bills: 0, payments: 0 })
   const [recentBills, setRecentBills] = useState<RecentBill[]>([])
@@ -158,7 +180,6 @@ export default function DashboardPage() {
       const billsData = get(billsRes)
       const paymentsData = get(paymentsRes)
 
-      // Stats
       setStats({
         admins: adminsData.count ?? adminsData.data?.length ?? 0,
         customers: customersData.count ?? customersData.data?.length ?? 0,
@@ -167,20 +188,19 @@ export default function DashboardPage() {
         payments: paymentsData.count ?? paymentsData.data?.length ?? 0,
       })
 
-      // Recent bills & payments (5 terbaru)
       const bills: RecentBill[] = [...(billsData.data ?? [])].reverse()
       const payments: RecentPayment[] = [...(paymentsData.data ?? [])].reverse()
       setRecentBills(bills.slice(0, 5))
       setRecentPayments(payments.slice(0, 5))
 
-      // ── Activity feed ──────────────────────────────────────────────────────
+      // Activity feed
       const activityList: ActivityItem[] = []
 
         ; (adminsData.data as RecentAdmin[] ?? []).slice(-5).forEach(a => {
           if (!a.createdAt) return
           activityList.push({
             id: `admin-${a.id}`, type: "admin",
-            title: `New admin registered`,
+            title: "New admin registered",
             subtitle: a.name,
             time: timeAgo(a.createdAt),
             timestamp: new Date(a.createdAt).getTime(),
@@ -190,7 +210,7 @@ export default function DashboardPage() {
           if (!c.createdAt) return
           activityList.push({
             id: `customer-${c.id}`, type: "customer",
-            title: `New customer registered`,
+            title: "New customer registered",
             subtitle: c.name,
             time: timeAgo(c.createdAt),
             timestamp: new Date(c.createdAt).getTime(),
@@ -200,7 +220,7 @@ export default function DashboardPage() {
           if (!b.createdAt) return
           activityList.push({
             id: `bill-${b.id}`, type: "bill",
-            title: `New bill created`,
+            title: "New bill created",
             subtitle: b.customer?.name ?? `Bill #${b.id}`,
             time: timeAgo(b.createdAt),
             timestamp: new Date(b.createdAt).getTime(),
@@ -217,11 +237,10 @@ export default function DashboardPage() {
           })
         })
 
-      // Sort by newest
       activityList.sort((a, b) => b.timestamp - a.timestamp)
       setActivities(activityList.slice(0, 8))
 
-      // ── Chart data ─────────────────────────────────────────────────────────
+      // Chart data
       const monthMap: Record<string, { bills: number; payments: number }> = {}
       const monthLabel = (iso: string) =>
         new Date(iso).toLocaleDateString("id-ID", { month: "short", year: "2-digit" })
@@ -249,37 +268,62 @@ export default function DashboardPage() {
   useEffect(() => { fetchAll() }, [fetchAll])
 
   const statCards = [
-    { label: "Total Admins", value: stats.admins, icon: UserStar, color: "bg-violet-500", href: "/admin/admins", delay: 0 },
-    { label: "Total Customers", value: stats.customers, icon: Users, color: "bg-emerald-500", href: "/admin/customers", delay: 0.05 },
-    { label: "Total Services", value: stats.services, icon: Toolbox, color: "bg-blue-500", href: "/admin/services", delay: 0.1 },
-    { label: "Total Bills", value: stats.bills, icon: Receipt, color: "bg-orange-500", href: "/admin/bills", delay: 0.15 },
-    { label: "Total Payments", value: stats.payments, icon: Wallet, color: "bg-pink-500", href: "/admin/payments", delay: 0.2 },
+    { label: "Total Admins",    value: stats.admins,    icon: UserStar, gradient: "bg-violet-500", href: "/admin/admins",    delay: 0    },
+    { label: "Total Customers", value: stats.customers, icon: Users,    gradient: "bg-blue-500",   href: "/admin/customers", delay: 0.05 },
+    { label: "Total Services",  value: stats.services,  icon: Toolbox,  gradient: "bg-cyan-500",   href: "/admin/services",  delay: 0.1  },
+    { label: "Total Bills",     value: stats.bills,     icon: Receipt,  gradient: "bg-orange-500", href: "/admin/bills",     delay: 0.15 },
+    { label: "Total Payments",  value: stats.payments,  icon: Wallet,   gradient: "bg-emerald-500",href: "/admin/payments",  delay: 0.2  },
   ]
 
   const quickActions = [
-    { label: "Add Admin", icon: UserStar, color: "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20", href: "/admin/admins?action=create" },
-    { label: "Add Customer", icon: Users, color: "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20", href: "/admin/customers?action=create" },
-    { label: "Create Bill", icon: Receipt, color: "bg-orange-500/10 text-orange-600 hover:bg-orange-500/20", href: "/admin/bills?action=create" },
-    { label: "Add Payment", icon: Wallet, color: "bg-pink-500/10 text-pink-600 hover:bg-pink-500/20", href: "/admin/payments?action=create" },
+    { label: "Add Admin",    icon: UserStar, bg: "bg-violet-50 hover:bg-violet-100", text: "text-violet-700", border: "border-violet-100", href: "/admin/admins?action=create" },
+    { label: "Add Customer", icon: Users,    bg: "bg-blue-50 hover:bg-blue-100",     text: "text-blue-700",   border: "border-blue-100",   href: "/admin/customers?action=create" },
+    { label: "Create Bill",  icon: Receipt,  bg: "bg-orange-50 hover:bg-orange-100", text: "text-orange-700", border: "border-orange-100", href: "/admin/bills?action=create" },
+    { label: "Add Payment",  icon: Wallet,   bg: "bg-emerald-50 hover:bg-emerald-100",text: "text-emerald-700",border: "border-emerald-100",href: "/admin/payments?action=create" },
   ]
 
   return (
     <div className="space-y-6">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Welcome back! Heres whats happening today.
-          </p>
+      {/* ── Hero Header ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative rounded-2xl overflow-hidden bg-linear-to-br from-blue-600 to-blue-500 p-6 shadow-lg shadow-blue-500/20"
+      >
+        {/* decorative circles */}
+        <div className="absolute -top-6 -right-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+        <div className="absolute bottom-0 right-16 w-20 h-20 rounded-full bg-white/5 pointer-events-none" />
+
+        <div className="relative flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center">
+                <Droplets size={14} className="text-white" />
+              </div>
+              <span className="text-blue-100 text-xs font-medium">PDAM Smart Dashboard</span>
+            </div>
+            <h1 className="text-white text-2xl font-bold tracking-tight">
+              {getGreeting()}! 👋
+            </h1>
+            <p className="text-blue-100/80 text-sm mt-0.5">
+              {getToday()}
+            </p>
+          </div>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 shrink-0 bg-white/15 border-white/25 text-white hover:bg-white/25 hover:text-white backdrop-blur-sm"
+            onClick={() => fetchAll(true)}
+            disabled={refreshing}
+          >
+            <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" size="sm" className="gap-1.5 shrink-0"
-          onClick={() => fetchAll(true)} disabled={refreshing}>
-          <RefreshCw size={13} className={refreshing ? "animate-spin" : ""} />
-          Refresh
-        </Button>
-      </div>
+      </motion.div>
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -292,13 +336,20 @@ export default function DashboardPage() {
         className="rounded-2xl border border-border bg-card p-5"
       >
         <div className="flex items-center gap-2 mb-4">
-          <Plus size={15} className="text-muted-foreground" />
+          <div className="w-6 h-6 rounded-lg bg-blue-50 flex items-center justify-center">
+            <Plus size={13} className="text-blue-600" />
+          </div>
           <p className="text-sm font-semibold">Quick Actions</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {quickActions.map(({ label, icon: Icon, color, href }) => (
+          {quickActions.map(({ label, icon: Icon, bg, text, border, href }) => (
             <Link key={label} href={href}>
-              <div className={`rounded-xl p-4 flex flex-col items-center gap-2.5 cursor-pointer transition-colors ${color}`}>
+              <div className={`
+                rounded-xl p-4 flex flex-col items-center gap-2.5
+                cursor-pointer transition-all duration-200 border
+                hover:-translate-y-0.5 hover:shadow-sm
+                ${bg} ${text} ${border}
+              `}>
                 <Icon size={20} />
                 <span className="text-xs font-medium text-center">{label}</span>
               </div>
@@ -315,17 +366,20 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.27 }}
           className="lg:col-span-3 rounded-2xl border border-border bg-card p-5"
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <p className="text-sm font-semibold">Bills & Payments</p>
+              <p className="text-sm font-semibold">Bills &amp; Payments</p>
               <p className="text-xs text-muted-foreground">Monthly overview</p>
             </div>
-            <TrendingUp size={16} className="text-muted-foreground" />
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <TrendingUp size={15} className="text-blue-600" />
+            </div>
           </div>
           {loading ? (
             <Skeleton className="h-48 w-full rounded-xl" />
           ) : chartData.length === 0 ? (
-            <div className="h-48 flex items-center justify-center text-sm text-muted-foreground">
+            <div className="h-48 flex flex-col items-center justify-center text-sm text-muted-foreground gap-2">
+              <TrendingUp size={28} className="text-muted-foreground/30" />
               No chart data available yet
             </div>
           ) : (
@@ -353,19 +407,21 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* Activity feed */}
+        {/* Activity feed — with timeline line */}
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}
           className="lg:col-span-2 rounded-2xl border border-border bg-card p-5"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Activity size={15} className="text-muted-foreground" />
+          <div className="flex items-center gap-2 mb-5">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Activity size={15} className="text-blue-600" />
+            </div>
             <p className="text-sm font-semibold">Recent Activity</p>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-0">
             {loading && [...Array(5)].map((_, i) => (
-              <div key={i} className="flex items-center gap-3">
+              <div key={i} className="flex items-center gap-3 py-2">
                 <Skeleton className="h-8 w-8 rounded-full shrink-0" />
                 <div className="space-y-1 flex-1">
                   <Skeleton className="h-3 w-32" />
@@ -379,18 +435,23 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground text-center py-8">No activity yet</p>
             )}
 
-            {!loading && activities.map((item) => {
+            {!loading && activities.map((item, idx) => {
               const { bg, color, Icon } = activityIcon(item.type)
+              const isLast = idx === activities.length - 1
               return (
-                <div key={item.id} className="flex items-center gap-3">
-                  <div className={`h-8 w-8 rounded-full ${bg} flex items-center justify-center shrink-0`}>
+                <div key={item.id} className="flex items-start gap-3 relative">
+                  {/* Timeline line */}
+                  {!isLast && (
+                    <div className="absolute left-4 top-8 bottom-0 w-px bg-border" />
+                  )}
+                  <div className={`h-8 w-8 rounded-full ${bg} flex items-center justify-center shrink-0 z-10`}>
                     <Icon size={14} className={color} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">{item.title}</p>
+                  <div className="flex-1 min-w-0 py-1.5">
+                    <p className="text-xs font-medium truncate leading-snug">{item.title}</p>
                     <p className="text-[11px] text-muted-foreground truncate">{item.subtitle}</p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground shrink-0">{item.time}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0 pt-1.5">{item.time}</span>
                 </div>
               )
             })}
@@ -412,7 +473,9 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">Latest 5 bills</p>
             </div>
             <Link href="/admin/bills">
-              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1">View all <ArrowRight size={11} /></Button>
+              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                View all <ArrowRight size={11} />
+              </Button>
             </Link>
           </div>
           <div className="divide-y divide-border">
@@ -460,7 +523,9 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">Latest 5 transactions</p>
             </div>
             <Link href="/admin/payments">
-              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1">View all <ArrowRight size={11} /></Button>
+              <Button variant="ghost" size="sm" className="text-xs h-7 gap-1 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                View all <ArrowRight size={11} />
+              </Button>
             </Link>
           </div>
           <div className="divide-y divide-border">
@@ -477,7 +542,7 @@ export default function DashboardPage() {
               <div key={p.id} className="flex items-center justify-between px-5 py-3 hover:bg-muted/30 transition-colors">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar className="h-7 w-7 shrink-0">
-                    <AvatarFallback className="bg-pink-500/10 text-pink-600 text-[10px] font-bold">
+                    <AvatarFallback className="bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">
                       {initials(p.bill?.customer?.name ?? "PY")}
                     </AvatarFallback>
                   </Avatar>

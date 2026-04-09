@@ -8,6 +8,7 @@ import { Service, ServiceListResponse } from "@/types/service"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
     Table, TableBody, TableCell,
@@ -17,8 +18,8 @@ import {
     Pagination, PaginationContent, PaginationEllipsis,
     PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination"
-import ServiceFormModal from "@/app/components/dashboard/services/service-form-modal"
-import ServiceDeleteDialog from "@/app/components/dashboard/services/service-delete-dialog"
+import ServiceFormModal from "@/components/admin/services/ServiceFormModal"
+import ServiceDeleteDialog from "@/components/admin/services/ServiceDeleteDialog"
 
 const PAGE_SIZE = 10
 
@@ -72,13 +73,14 @@ export default function ServicesPage() {
 
     return (
         <>
-            <div className="space-y-5">
+            <div className="p-6 space-y-5">
+                {/* Header */}
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Service Management</h1>
                         <p className="text-sm text-muted-foreground mt-0.5">Manage water usage service tiers</p>
                     </div>
-                    <Button size="sm" className="gap-1.5 shrink-0" onClick={openCreate}>
+                    <Button size="sm" className="gap-1.5 shrink-0 bg-blue-600 hover:bg-blue-700" onClick={openCreate}>
                         <Plus size={15} /> Add Service
                     </Button>
                 </div>
@@ -184,26 +186,29 @@ export default function ServicesPage() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-2.5">
-                                                    <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                                                        <Toolbox size={14} className="text-blue-600" />
-                                                    </div>
+                                                    <Avatar className="h-8 w-8 shrink-0">
+                                                        <AvatarFallback className="bg-blue-500/10 text-blue-600 text-[11px] font-semibold">
+                                                            <Toolbox size={14} />
+                                                        </AvatarFallback>
+                                                    </Avatar>
                                                     <span className="text-sm font-medium">{service.name}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
                                                 <Badge variant="outline" className="text-xs font-mono">
                                                     {service.min_usage} m³
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">
                                                 <Badge variant="outline" className="text-xs font-mono">
                                                     {service.max_usage} m³
                                                 </Badge>
                                             </TableCell>
                                             <TableCell>
-                                                <span className="text-sm font-semibold text-blue-600">
+                                                <Badge
+                                                    className="text-[11px] bg-blue-500/10 text-blue-600 border-0 font-medium hover:bg-blue-500/10">
                                                     {formatPrice(service.price)}
-                                                </span>
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="text-right pr-5">
                                                 <div className="flex items-center justify-end gap-1">

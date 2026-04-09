@@ -23,8 +23,8 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination"
-import CustomerFormModal from "@/app/components/admin/customers/CustomerFormModal"
-import CustomerDeleteDialog from "@/app/components/admin/customers/CustomerDeleteDialog"
+import CustomerFormModal from "@/components/admin/customers/CustomerFormModal"
+import CustomerDeleteDialog from "@/components/admin/customers/CustomerDeleteDialog"
 
 const PAGE_SIZE = 10
 

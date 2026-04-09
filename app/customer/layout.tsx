@@ -1,13 +1,9 @@
-import AdminSidebar from "../../components/admin/AdminSidebar"
+import CustomerSidebar from "@/components/customer/CustomerSidebar"
 
-export default function AdminLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
+export default function CustomerLayout({ children }: { children: React.ReactNode }) {
     return (
         <div className="flex min-h-screen bg-background">
-            <AdminSidebar />
+            <CustomerSidebar />
             <main className="flex-1 overflow-auto px-6 py-6">
                 {children}
             </main>

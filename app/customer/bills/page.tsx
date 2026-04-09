@@ -1,10 +1,10 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
-    Plus, Search, Pencil, Trash2, RefreshCw, FileText, X,
-    Droplets, CheckCircle2, Clock, XCircle, Eye, ShieldCheck, Download,
+    Search, RefreshCw, FileText, X, Droplets,
+    CheckCircle2, Clock, XCircle, Upload, Image as ImageIcon, Loader2,
 } from "lucide-react"
 import Image from "next/image"
 import { api } from "@/lib/api"
@@ -13,7 +13,6 @@ import { BASE_PAYMENT_PROOF } from "@/global"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
     Table, TableBody, TableCell,
@@ -26,8 +25,6 @@ import {
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog"
-import BillFormModal from "@/components/admin/bills/BillFormModal"
-import BillDeleteDialog from "@/components/admin/bills/BillDeleteDialog"
 
 const PAGE_SIZE = 10
 
@@ -51,17 +48,12 @@ function formatPrice(price: number) {
     return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(price)
 }
 
-function initials(name: string) {
-    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
-}
-
 function getBillTotal(bill: Bill) {
     return bill.service?.price && bill.usage_value
         ? bill.service.price * bill.usage_value
         : bill.total_price ?? 0
 }
 
-/** Returns the effective status: prefer bill.payment.status if exists, else bill.status */
 function getBillStatus(bill: Bill): string {
     if (bill.paid) return "verified"
     if (bill.payments) {
@@ -74,6 +66,11 @@ function getBillStatus(bill: Bill): string {
     return "unpaid"
 }
 
+function proofUrl(proof_file: string): string {
+    if (proof_file.startsWith("http")) return proof_file
+    return `${BASE_PAYMENT_PROOF}/${proof_file}`
+}
+
 function StatusBadge({ status }: { status: string }) {
     if (status === "verified")
         return <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-0 gap-1 shrink-0"><CheckCircle2 size={10} />Lunas</Badge>
@@ -82,118 +79,127 @@ function StatusBadge({ status }: { status: string }) {
     return <Badge className="text-[10px] bg-red-500/10 text-red-600 border-0 gap-1 shrink-0"><XCircle size={10} />Belum Terbayar</Badge>
 }
 
-function proofUrl(proof_file: string): string {
-    if (proof_file.startsWith("http")) return proof_file
-    return `${BASE_PAYMENT_PROOF}/${proof_file}`
-}
-
-// ─── Proof Image Dialog ───────────────────────────────────────────────────────
-function ProofDialog({ open, onClose, bill }: { open: boolean; onClose: () => void; bill: Bill | null }) {
-    const proof = bill?.payments?.payment_proof;
-    return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
-                <div className="relative h-16 bg-linear-to-r from-blue-600 to-blue-500 flex items-end px-5 pb-0">
-                    <div className="absolute inset-0 opacity-10"
-                        style={{ backgroundImage: "radial-gradient(circle at 80% 50%, white 0%, transparent 60%)" }} />
-                </div>
-                <div className="flex justify-center -mt-6 z-10 relative">
-                    <div className="w-12 h-12 rounded-full bg-blue-600 border-4 border-background flex items-center justify-center shadow-lg">
-                        <Eye size={18} className="text-white" />
-                    </div>
-                </div>
-                <div className="px-6 pb-6 pt-3 space-y-3">
-                    <DialogHeader className="text-center">
-                        <DialogTitle className="text-base font-bold">Bukti Pembayaran</DialogTitle>
-                        <DialogDescription className="text-xs">
-                            {bill?.customer?.name} — {bill ? MONTH_NAMES[(bill.month ?? 1) - 1] : ""} {bill?.year}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {proof ? (
-                        <div className="space-y-4">
-                            <div className="rounded-xl overflow-hidden border border-border bg-muted/30 relative aspect-4/3">
-                                <Image
-                                    src={proofUrl(proof)}
-                                    alt="Bukti Pembayaran"
-                                    fill
-                                    className="object-contain"
-                                    unoptimized
-                                />
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" className="flex-1 h-9" onClick={onClose}>Tutup</Button>
-                                <a href={proofUrl(proof)} download="bukti-pembayaran" target="_blank" rel="noreferrer" className="flex-1 block">
-                                    <Button className="w-full h-9 bg-blue-600 hover:bg-blue-700 gap-1.5 shadow-sm text-xs font-medium text-white">
-                                        <Download size={14} /> Download Bukti
-                                    </Button>
-                                </a>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-                            <FileText size={32} className="opacity-20" />
-                            <p className="text-sm">Belum ada bukti pembayaran</p>
-                            <Button variant="outline" className="w-full h-9 mt-4" onClick={onClose}>Tutup</Button>
-                        </div>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
-// ─── Verify Confirm Dialog ────────────────────────────────────────────────────
-function VerifyDialog({ open, onClose, bill, onSuccess }: {
+// ─── Upload Payment Dialog ────────────────────────────────────────────────────
+function UploadPaymentDialog({ open, onClose, bill, onSuccess }: {
     open: boolean; onClose: () => void; bill: Bill | null; onSuccess: () => void
 }) {
+    const [file, setFile] = useState<File | null>(null)
+    const [preview, setPreview] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const inputRef = useRef<HTMLInputElement>(null)
 
-    const handleVerify = async () => {
-        if (!bill?.payments?.id) return
+    useEffect(() => {
+        if (!open) { setFile(null); setPreview(null); setError(null) }
+    }, [open])
+
+    const handleFile = (f: File) => {
+        setFile(f)
+        setPreview(URL.createObjectURL(f))
+    }
+
+    const handleDrop = (e: React.DragEvent) => {
+        e.preventDefault()
+        const f = e.dataTransfer.files[0]
+        if (f && f.type.startsWith("image/")) handleFile(f)
+    }
+
+    const handleSubmit = async () => {
+        if (!bill || !file) return
         setLoading(true); setError(null)
         try {
-            await api.patch(`/payments/${bill.payments.id}`)
+            const formData = new FormData()
+            formData.append("bill_id", String(bill.id))
+            formData.append("file", file)
+            await api.post("/payments", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            })
             onSuccess()
             onClose()
         } catch (e: unknown) {
             setError(
                 (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-                ?? "Gagal memverifikasi pembayaran."
+                ?? "Gagal mengunggah bukti pembayaran."
             )
         } finally {
             setLoading(false)
         }
     }
 
+    const total = bill ? getBillTotal(bill) : 0
+
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden rounded-2xl">
-                <div className="h-14 bg-linear-to-r from-emerald-600 to-emerald-500 relative">
+            <DialogContent className="sm:max-w-md p-0 gap-0 overflow-hidden rounded-2xl">
+                {/* Banner */}
+                <div className="relative h-20 bg-linear-to-r from-blue-600 via-blue-500 to-cyan-500">
                     <div className="absolute inset-0 opacity-10"
                         style={{ backgroundImage: "radial-gradient(circle at 80% 50%, white 0%, transparent 60%)" }} />
                 </div>
-                <div className="flex justify-center -mt-6 z-10 relative">
-                    <div className="w-12 h-12 rounded-full bg-emerald-500 border-4 border-background flex items-center justify-center shadow-lg">
-                        <ShieldCheck size={18} className="text-white" />
+                <div className="flex justify-center -mt-7 z-10 relative">
+                    <div className="w-14 h-14 rounded-full bg-blue-600 border-4 border-background flex items-center justify-center shadow-lg ring-2 ring-blue-500/20">
+                        <Upload size={22} className="text-white" />
                     </div>
                 </div>
+
                 <div className="px-6 pb-6 pt-3 space-y-4">
-                    <DialogHeader className="text-center">
-                        <DialogTitle className="text-base font-bold">Verifikasi Pembayaran</DialogTitle>
+                    <DialogHeader className="text-center space-y-0.5">
+                        <DialogTitle className="text-base font-bold">Upload Bukti Pembayaran</DialogTitle>
                         <DialogDescription className="text-xs">
-                            Konfirmasi verifikasi tagihan <span className="font-semibold">{bill?.customer?.name}</span> bulan{" "}
-                            {bill ? MONTH_NAMES[(bill.month ?? 1) - 1] : ""} {bill?.year} sebesar{" "}
-                            <span className="font-semibold">{formatPrice(bill ? getBillTotal(bill) : 0)}</span>.
+                            {bill ? `${MONTH_NAMES[(bill.month ?? 1) - 1]} ${bill.year}` : ""} —{" "}
+                            <span className="font-semibold text-foreground">{formatPrice(total)}</span>
                         </DialogDescription>
                     </DialogHeader>
+
                     {error && (
                         <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2 border border-destructive/20">{error}</p>
                     )}
-                    <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1 h-9" onClick={onClose} disabled={loading}>Batal</Button>
-                        <Button className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700" onClick={handleVerify} disabled={loading}>
-                            {loading ? "Memproses…" : "Verifikasi"}
+
+                    {/* Drop zone */}
+                    <div
+                        className={`relative rounded-xl border-2 border-dashed transition-colors cursor-pointer group ${
+                            preview ? "border-blue-300 bg-blue-50/50" : "border-border hover:border-blue-400 hover:bg-blue-50/30"
+                        }`}
+                        onClick={() => inputRef.current?.click()}
+                        onDragOver={e => e.preventDefault()}
+                        onDrop={handleDrop}
+                    >
+                        <input
+                            ref={inputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
+                        />
+                        {preview ? (
+                            <div className="relative aspect-4/3 rounded-lg overflow-hidden">
+                                <Image src={preview} alt="preview" fill className="object-contain" unoptimized />
+                                <button
+                                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors"
+                                    onClick={e => { e.stopPropagation(); setFile(null); setPreview(null) }}
+                                >
+                                    <X size={12} className="text-white" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground group-hover:text-blue-600 transition-colors">
+                                <ImageIcon size={28} className="opacity-40" />
+                                <p className="text-sm font-medium">Klik atau drag & drop gambar</p>
+                                <p className="text-xs opacity-60">PNG, JPG, JPEG (max 10MB)</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex gap-2 pt-1">
+                        <Button variant="outline" className="flex-1 h-9" onClick={onClose} disabled={loading}>
+                            Batal
+                        </Button>
+                        <Button
+                            className="flex-1 h-9 bg-blue-600 hover:bg-blue-700"
+                            onClick={handleSubmit}
+                            disabled={!file || loading}
+                        >
+                            {loading ? <Loader2 size={14} className="animate-spin" /> : "Kirim Bukti"}
                         </Button>
                     </div>
                 </div>
@@ -202,25 +208,60 @@ function VerifyDialog({ open, onClose, bill, onSuccess }: {
     )
 }
 
+// ─── Proof Viewer Dialog ──────────────────────────────────────────────────────
+function ProofViewDialog({ open, onClose, bill }: { open: boolean; onClose: () => void; bill: Bill | null }) {
+    const proof = bill?.payments?.payment_proof;
+    return (
+        <Dialog open={open} onOpenChange={v => !v && onClose()}>
+            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
+                <div className="h-14 bg-linear-to-r from-amber-500 to-orange-400" />
+                <div className="flex justify-center -mt-6 z-10 relative">
+                    <div className="w-12 h-12 rounded-full bg-amber-500 border-4 border-background flex items-center justify-center shadow-lg">
+                        <ImageIcon size={18} className="text-white" />
+                    </div>
+                </div>
+                <div className="px-6 pb-6 pt-3 space-y-3">
+                    <DialogHeader className="text-center">
+                        <DialogTitle className="text-base font-bold">Bukti Pembayaran</DialogTitle>
+                        <DialogDescription className="text-xs">
+                            {bill ? `${MONTH_NAMES[(bill.month ?? 1) - 1]} ${bill.year}` : ""} — Menunggu Verifikasi
+                        </DialogDescription>
+                    </DialogHeader>
+                    {proof ? (
+                        <div className="rounded-xl overflow-hidden border border-border bg-muted/30 relative aspect-4/3">
+                            <Image src={proofUrl(proof)} alt="Bukti Pembayaran" fill className="object-contain" unoptimized />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+                            <FileText size={32} className="opacity-20" />
+                            <p className="text-sm">Belum ada bukti pembayaran</p>
+                        </div>
+                    )}
+                    <Button variant="outline" className="w-full h-9" onClick={onClose}>Tutup</Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function BillsPage() {
+export default function CustomerBillsPage() {
     const [allBills, setAllBills] = useState<Bill[]>([])
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
     const [loading, setLoading] = useState(true)
 
-    const [formOpen, setFormOpen] = useState(false)
-    const [deleteOpen, setDeleteOpen] = useState(false)
+    const [uploadBill, setUploadBill] = useState<Bill | null>(null)
+    const [uploadOpen, setUploadOpen] = useState(false)
+    const [proofBill, setProofBill] = useState<Bill | null>(null)
     const [proofOpen, setProofOpen] = useState(false)
-    const [verifyOpen, setVerifyOpen] = useState(false)
-    const [selected, setSelected] = useState<Bill | null>(null)
 
     const fetchBills = useCallback(async () => {
         setLoading(true)
         try {
-            const res = await api.get<BillListResponse>("/bills", {
-                params: { page: 1, quantity: 9999, search: "" },
+            const res = await api.get<BillListResponse>("/bills/me", {
+                params: { page: 1, quantity: 9999 },
             })
             setAllBills(res.data.data ?? [])
         } finally {
@@ -231,13 +272,12 @@ export default function BillsPage() {
     useEffect(() => { fetchBills() }, [fetchBills])
     useEffect(() => { setPage(1) }, [search, statusFilter])
 
-    // Filter
     const filtered = allBills
         .filter(b =>
-            b.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            b.customer?.customer_number?.toLowerCase().includes(search.toLowerCase()) ||
             b.service?.name?.toLowerCase().includes(search.toLowerCase()) ||
-            b.measurement_number?.toLowerCase().includes(search.toLowerCase())
+            b.measurement_number?.toLowerCase().includes(search.toLowerCase()) ||
+            String(b.month).includes(search) ||
+            String(b.year).includes(search)
         )
         .filter(b => {
             if (statusFilter === "all") return true
@@ -249,18 +289,11 @@ export default function BillsPage() {
     const pages = getPageNumbers(page, totalPages)
     const bills = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-    // Count badges for filter tabs
     const counts = {
         unpaid:   allBills.filter(b => getBillStatus(b) === "unpaid").length,
         pending:  allBills.filter(b => getBillStatus(b) === "pending").length,
         verified: allBills.filter(b => getBillStatus(b) === "verified").length,
     }
-
-    const openCreate = () => { setSelected(null); setFormOpen(true) }
-    const openEdit   = (b: Bill) => { setSelected(b); setFormOpen(true) }
-    const openDelete = (b: Bill) => { setSelected(b); setDeleteOpen(true) }
-    const openProof  = (b: Bill) => { setSelected(b); setProofOpen(true) }
-    const openVerify = (b: Bill) => { setSelected(b); setVerifyOpen(true) }
 
     return (
         <>
@@ -268,11 +301,11 @@ export default function BillsPage() {
                 {/* Header */}
                 <div className="flex items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">Bill Management</h1>
-                        <p className="text-sm text-muted-foreground mt-0.5">Manage water usage bills and verify payments</p>
+                        <h1 className="text-2xl font-bold tracking-tight">Tagihan Saya</h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">Lihat dan bayar tagihan air Anda</p>
                     </div>
-                    <Button size="sm" className="gap-1.5 shrink-0 bg-emerald-600 hover:bg-emerald-700" onClick={openCreate}>
-                        <Plus size={15} /> Add Bill
+                    <Button variant="ghost" size="sm" className="gap-1.5 shrink-0" onClick={fetchBills}>
+                        <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Refresh
                     </Button>
                 </div>
 
@@ -306,7 +339,7 @@ export default function BillsPage() {
                         <div className="relative w-72">
                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                             <Input
-                                placeholder="Search customer, service, or meter…"
+                                placeholder="Cari layanan, nomor meter…"
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 className="pl-8 pr-8 h-8 text-sm"
@@ -325,14 +358,9 @@ export default function BillsPage() {
                                 )}
                             </AnimatePresence>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs gap-1 h-6">
-                                <FileText size={11} /> {allBills.length} bill{allBills.length !== 1 ? "s" : ""}
-                            </Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={fetchBills} title="Refresh">
-                                <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-                            </Button>
-                        </div>
+                        <Badge variant="secondary" className="text-xs gap-1 h-6">
+                            <FileText size={11} /> {allBills.length} tagihan
+                        </Badge>
                     </div>
 
                     {/* Table */}
@@ -340,64 +368,40 @@ export default function BillsPage() {
                         <TableHeader>
                             <TableRow className="hover:bg-transparent">
                                 <TableHead className="w-12 text-center text-xs">#</TableHead>
-                                <TableHead className="text-xs">Customer</TableHead>
-                                <TableHead className="text-xs">Period</TableHead>
-                                <TableHead className="text-xs">Service</TableHead>
-                                <TableHead className="text-xs">Meter No.</TableHead>
-                                <TableHead className="text-xs">Usage</TableHead>
+                                <TableHead className="text-xs">Periode</TableHead>
+                                <TableHead className="text-xs">Layanan</TableHead>
+                                <TableHead className="text-xs">No. Meter</TableHead>
+                                <TableHead className="text-xs">Penggunaan</TableHead>
                                 <TableHead className="text-xs">Total</TableHead>
                                 <TableHead className="text-xs">Status</TableHead>
-                                <TableHead className="text-xs text-right pr-5">Actions</TableHead>
+                                <TableHead className="text-xs text-right pr-5">Aksi</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {/* Skeleton */}
                             {loading && [...Array(5)].map((_, i) => (
                                 <TableRow key={i} className="hover:bg-transparent">
                                     <TableCell><Skeleton className="h-3.5 w-4 mx-auto" /></TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2.5">
-                                            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-                                            <Skeleton className="h-3.5 w-28" />
-                                        </div>
-                                    </TableCell>
                                     <TableCell><Skeleton className="h-3.5 w-24" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-24 rounded-full" /></TableCell>
                                     <TableCell><Skeleton className="h-3.5 w-16" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-14 rounded-full" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
                                     <TableCell><Skeleton className="h-5 w-28 rounded-full" /></TableCell>
-                                    <TableCell className="text-right pr-5">
-                                        <div className="flex justify-end gap-1">
-                                            <Skeleton className="h-7 w-7 rounded-md" />
-                                            <Skeleton className="h-7 w-7 rounded-md" />
-                                            <Skeleton className="h-7 w-7 rounded-md" />
-                                        </div>
-                                    </TableCell>
+                                    <TableCell className="text-right pr-5"><Skeleton className="h-7 w-24 rounded-md ml-auto" /></TableCell>
                                 </TableRow>
                             ))}
 
-                            {/* Empty */}
                             {!loading && bills.length === 0 && (
                                 <TableRow className="hover:bg-transparent">
-                                    <TableCell colSpan={9}>
+                                    <TableCell colSpan={8}>
                                         <div className="flex flex-col items-center py-14 gap-2 text-muted-foreground">
                                             <FileText size={32} className="opacity-20" />
-                                            <p className="text-sm">
-                                                {search ? `No bills found for "${search}"` : "No bills yet"}
-                                            </p>
-                                            {search && (
-                                                <Button variant="ghost" size="sm" className="text-xs h-7 mt-1"
-                                                    onClick={() => setSearch("")}>
-                                                    Clear search
-                                                </Button>
-                                            )}
+                                            <p className="text-sm">Tidak ada tagihan ditemukan</p>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             )}
 
-                            {/* Data rows */}
                             {!loading && (
                                 <AnimatePresence>
                                     {bills.map((bill, i) => {
@@ -414,39 +418,20 @@ export default function BillsPage() {
                                                     {(page - 1) * PAGE_SIZE + i + 1}
                                                 </TableCell>
 
-                                                {/* Customer */}
-                                                <TableCell>
-                                                    <div className="flex items-center gap-2.5">
-                                                        <Avatar className="h-8 w-8 shrink-0">
-                                                            <AvatarFallback className="bg-emerald-500/10 text-emerald-600 text-[11px] font-semibold">
-                                                                {initials(bill.customer?.name ?? "?")}
-                                                            </AvatarFallback>
-                                                        </Avatar>
-                                                        <div>
-                                                            <p className="text-sm font-medium leading-tight">{bill.customer?.name ?? "—"}</p>
-                                                            <p className="text-[11px] text-muted-foreground font-mono">{bill.customer?.customer_number ?? ""}</p>
-                                                        </div>
-                                                    </div>
-                                                </TableCell>
-
-                                                {/* Period */}
-                                                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                                                <TableCell className="text-sm font-medium whitespace-nowrap">
                                                     {MONTH_NAMES[(bill.month ?? 1) - 1]} {bill.year}
                                                 </TableCell>
 
-                                                {/* Service */}
                                                 <TableCell>
-                                                    <Badge className="text-[11px] bg-emerald-500/10 text-emerald-600 border-0 font-medium hover:bg-emerald-500/10">
+                                                    <Badge className="text-[11px] bg-blue-500/10 text-blue-600 border-0 font-medium hover:bg-blue-500/10">
                                                         {bill.service?.name ?? "—"}
                                                     </Badge>
                                                 </TableCell>
 
-                                                {/* Meter No */}
-                                                <TableCell className="text-sm text-muted-foreground font-mono text-xs">
+                                                <TableCell className="text-sm text-muted-foreground font-mono">
                                                     {bill.measurement_number}
                                                 </TableCell>
 
-                                                {/* Usage */}
                                                 <TableCell>
                                                     <Badge variant="outline" className="text-xs font-mono gap-1">
                                                         <Droplets size={10} className="text-blue-500" />
@@ -454,51 +439,54 @@ export default function BillsPage() {
                                                     </Badge>
                                                 </TableCell>
 
-                                                {/* Total */}
                                                 <TableCell>
-                                                    <Badge className="text-[11px] bg-emerald-500/10 text-emerald-700 border-0 font-semibold hover:bg-emerald-500/10">
+                                                    <span className="text-sm font-semibold text-foreground">
                                                         {formatPrice(getBillTotal(bill))}
-                                                    </Badge>
+                                                    </span>
                                                 </TableCell>
 
-                                                {/* Status */}
                                                 <TableCell>
                                                     <StatusBadge status={billStatus} />
                                                 </TableCell>
 
-                                                {/* Actions */}
                                                 <TableCell className="text-right pr-5">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        {/* Lihat bukti — hanya jika ada payment */}
-                                                        {bill.payments && (
-                                                            <Button variant="ghost" size="icon"
-                                                                className="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                                                                title="Lihat bukti bayar"
-                                                                onClick={() => openProof(bill)}>
-                                                                <Eye size={13} />
-                                                            </Button>
-                                                        )}
-                                                        {/* Verifikasi — hanya jika pending */}
-                                                        {billStatus === "pending" && (
-                                                            <Button variant="ghost" size="icon"
-                                                                className="h-7 w-7 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
-                                                                title="Verifikasi pembayaran"
-                                                                onClick={() => openVerify(bill)}>
-                                                                <ShieldCheck size={13} />
-                                                            </Button>
-                                                        )}
-                                                        <Button variant="ghost" size="icon"
-                                                            disabled={billStatus === "verified"}
-                                                            className={`h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted ${billStatus === "verified" ? "opacity-50 cursor-not-allowed" : ""}`}
-                                                            title={billStatus === "verified" ? "Tidak dapat diedit karena sudah lunas" : "Edit bill"} onClick={() => openEdit(bill)}>
-                                                            <Pencil size={13} />
+                                                    {billStatus === "unpaid" && (
+                                                        <Button
+                                                            size="sm"
+                                                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 gap-1"
+                                                            onClick={() => { setUploadBill(bill); setUploadOpen(true) }}
+                                                        >
+                                                            <Upload size={11} /> Bayar
                                                         </Button>
-                                                        <Button variant="ghost" size="icon"
-                                                            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                                                            title="Delete bill" onClick={() => openDelete(bill)}>
-                                                            <Trash2 size={13} />
+                                                    )}
+                                                    {billStatus === "pending" && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-7 text-xs gap-1 text-amber-600 border-amber-300 hover:bg-amber-50"
+                                                            onClick={() => { setProofBill(bill); setProofOpen(true) }}
+                                                        >
+                                                            <ImageIcon size={11} /> Lihat Bukti
                                                         </Button>
-                                                    </div>
+                                                    )}
+                                                    {billStatus === "verified" && (
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {bill.payments?.payment_proof && (
+                                                                <Button
+                                                                    size="icon"
+                                                                    variant="ghost"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                                                    title="Lihat Bukti"
+                                                                    onClick={() => { setProofBill(bill); setProofOpen(true) }}
+                                                                >
+                                                                    <ImageIcon size={13} />
+                                                                </Button>
+                                                            )}
+                                                            <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                                                <CheckCircle2 size={12} /> Lunas
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                             </motion.tr>
                                         )
@@ -512,11 +500,9 @@ export default function BillsPage() {
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20">
                             <p className="text-xs text-muted-foreground">
-                                Showing{" "}
-                                <span className="font-medium text-foreground">
+                                Menampilkan <span className="font-medium text-foreground">
                                     {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)}
-                                </span>{" "}
-                                of <span className="font-medium text-foreground">{total}</span> bills
+                                </span> dari <span className="font-medium text-foreground">{total}</span> tagihan
                             </p>
                             <Pagination className="w-auto mx-0">
                                 <PaginationContent>
@@ -535,9 +521,7 @@ export default function BillsPage() {
                                                     isActive={page === p}
                                                     onClick={() => setPage(p as number)}
                                                     className="cursor-pointer"
-                                                >
-                                                    {p}
-                                                </PaginationLink>
+                                                >{p}</PaginationLink>
                                             </PaginationItem>
                                         )
                                     )}
@@ -554,28 +538,16 @@ export default function BillsPage() {
                 </div>
             </div>
 
-            <BillFormModal
-                open={formOpen}
-                bill={selected}
-                onClose={() => setFormOpen(false)}
+            <UploadPaymentDialog
+                open={uploadOpen}
+                bill={uploadBill}
+                onClose={() => setUploadOpen(false)}
                 onSuccess={fetchBills}
             />
-            <BillDeleteDialog
-                open={deleteOpen}
-                bill={selected}
-                onClose={() => setDeleteOpen(false)}
-                onSuccess={fetchBills}
-            />
-            <ProofDialog
+            <ProofViewDialog
                 open={proofOpen}
-                bill={selected}
+                bill={proofBill}
                 onClose={() => setProofOpen(false)}
-            />
-            <VerifyDialog
-                open={verifyOpen}
-                bill={selected}
-                onClose={() => setVerifyOpen(false)}
-                onSuccess={fetchBills}
             />
         </>
     )

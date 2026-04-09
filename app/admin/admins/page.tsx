@@ -23,8 +23,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import AdminFormModal from "@/app/components/admin/admins/AdminFormModal"
-import AdminDeleteDialog from "@/app/components/admin/admins/AdminDeleteDialog"
+import AdminFormModal from "@/components/admin/admins/AdminFormModal"
+import AdminDeleteDialog from "@/components/admin/admins/AdminDeleteDialog"
 
 const PAGE_SIZE = 5
 

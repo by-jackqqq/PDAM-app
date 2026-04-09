@@ -7,7 +7,7 @@ import React from "react"
 import { useRouter } from "next/navigation"
 import { ToastContainer, toast } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
-import Navbar from "../components/home/Navbar"
+import Navbar from "../../components/home/Navbar"
 import Link from "next/link"
 
 const LoginPage = () => {

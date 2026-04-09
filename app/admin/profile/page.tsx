@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
-import EditProfileModal from "@/app/components/dashboard/edit-profile-modal"
+import EditProfileModal from "@/components/dashboard/edit-profile-modal"
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("id-ID", {
