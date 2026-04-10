@@ -4,11 +4,12 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Search, RefreshCw, FileText, X, Droplets,
-    CheckCircle2, Clock, XCircle, Upload, Image as ImageIcon, Loader2,
+    CheckCircle2, Clock, XCircle, Upload, Image as ImageIcon, Loader2, Printer,
 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { api } from "@/lib/api"
-import { Bill, BillPayment, BillListResponse, MONTH_NAMES } from "@/types/bill"
+import { Bill, BillListResponse, MONTH_NAMES } from "@/types/bill"
 import { BASE_PAYMENT_PROOF } from "@/global"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -471,6 +472,13 @@ export default function CustomerBillsPage() {
                                                     )}
                                                     {billStatus === "verified" && (
                                                         <div className="flex items-center justify-end gap-2">
+                                                            <Link href={`/print/bill/${bill.id}`} target="_blank">
+                                                                <Button variant="ghost" size="icon"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                                                    title="Cetak Struk Pembayaran">
+                                                                    <Printer size={13} />
+                                                                </Button>
+                                                            </Link>
                                                             {bill.payments?.payment_proof && (
                                                                 <Button
                                                                     size="icon"

@@ -4,9 +4,10 @@ import { useEffect, useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
     Plus, Search, Pencil, Trash2, RefreshCw, FileText, X,
-    Droplets, CheckCircle2, Clock, XCircle, Eye, ShieldCheck, Download,
+    Droplets, CheckCircle2, Clock, XCircle, Printer, Download,
 } from "lucide-react"
 import Image from "next/image"
+import Link from "next/link"
 import { api } from "@/lib/api"
 import { Bill, BillPayment, BillListResponse, MONTH_NAMES } from "@/types/bill"
 import { BASE_PAYMENT_PROOF } from "@/global"
@@ -87,121 +88,6 @@ function proofUrl(proof_file: string): string {
     return `${BASE_PAYMENT_PROOF}/${proof_file}`
 }
 
-// ─── Proof Image Dialog ───────────────────────────────────────────────────────
-function ProofDialog({ open, onClose, bill }: { open: boolean; onClose: () => void; bill: Bill | null }) {
-    const proof = bill?.payments?.payment_proof;
-    return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-2xl">
-                <div className="relative h-16 bg-linear-to-r from-blue-600 to-blue-500 flex items-end px-5 pb-0">
-                    <div className="absolute inset-0 opacity-10"
-                        style={{ backgroundImage: "radial-gradient(circle at 80% 50%, white 0%, transparent 60%)" }} />
-                </div>
-                <div className="flex justify-center -mt-6 z-10 relative">
-                    <div className="w-12 h-12 rounded-full bg-blue-600 border-4 border-background flex items-center justify-center shadow-lg">
-                        <Eye size={18} className="text-white" />
-                    </div>
-                </div>
-                <div className="px-6 pb-6 pt-3 space-y-3">
-                    <DialogHeader className="text-center">
-                        <DialogTitle className="text-base font-bold">Bukti Pembayaran</DialogTitle>
-                        <DialogDescription className="text-xs">
-                            {bill?.customer?.name} — {bill ? MONTH_NAMES[(bill.month ?? 1) - 1] : ""} {bill?.year}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {proof ? (
-                        <div className="space-y-4">
-                            <div className="rounded-xl overflow-hidden border border-border bg-muted/30 relative aspect-4/3">
-                                <Image
-                                    src={proofUrl(proof)}
-                                    alt="Bukti Pembayaran"
-                                    fill
-                                    className="object-contain"
-                                    unoptimized
-                                />
-                            </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" className="flex-1 h-9" onClick={onClose}>Tutup</Button>
-                                <a href={proofUrl(proof)} download="bukti-pembayaran" target="_blank" rel="noreferrer" className="flex-1 block">
-                                    <Button className="w-full h-9 bg-blue-600 hover:bg-blue-700 gap-1.5 shadow-sm text-xs font-medium text-white">
-                                        <Download size={14} /> Download Bukti
-                                    </Button>
-                                </a>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-                            <FileText size={32} className="opacity-20" />
-                            <p className="text-sm">Belum ada bukti pembayaran</p>
-                            <Button variant="outline" className="w-full h-9 mt-4" onClick={onClose}>Tutup</Button>
-                        </div>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
-// ─── Verify Confirm Dialog ────────────────────────────────────────────────────
-function VerifyDialog({ open, onClose, bill, onSuccess }: {
-    open: boolean; onClose: () => void; bill: Bill | null; onSuccess: () => void
-}) {
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-
-    const handleVerify = async () => {
-        if (!bill?.payments?.id) return
-        setLoading(true); setError(null)
-        try {
-            await api.patch(`/payments/${bill.payments.id}`)
-            onSuccess()
-            onClose()
-        } catch (e: unknown) {
-            setError(
-                (e as { response?: { data?: { message?: string } } })?.response?.data?.message
-                ?? "Gagal memverifikasi pembayaran."
-            )
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="sm:max-w-sm p-0 gap-0 overflow-hidden rounded-2xl">
-                <div className="h-14 bg-linear-to-r from-emerald-600 to-emerald-500 relative">
-                    <div className="absolute inset-0 opacity-10"
-                        style={{ backgroundImage: "radial-gradient(circle at 80% 50%, white 0%, transparent 60%)" }} />
-                </div>
-                <div className="flex justify-center -mt-6 z-10 relative">
-                    <div className="w-12 h-12 rounded-full bg-emerald-500 border-4 border-background flex items-center justify-center shadow-lg">
-                        <ShieldCheck size={18} className="text-white" />
-                    </div>
-                </div>
-                <div className="px-6 pb-6 pt-3 space-y-4">
-                    <DialogHeader className="text-center">
-                        <DialogTitle className="text-base font-bold">Verifikasi Pembayaran</DialogTitle>
-                        <DialogDescription className="text-xs">
-                            Konfirmasi verifikasi tagihan <span className="font-semibold">{bill?.customer?.name}</span> bulan{" "}
-                            {bill ? MONTH_NAMES[(bill.month ?? 1) - 1] : ""} {bill?.year} sebesar{" "}
-                            <span className="font-semibold">{formatPrice(bill ? getBillTotal(bill) : 0)}</span>.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {error && (
-                        <p className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2 border border-destructive/20">{error}</p>
-                    )}
-                    <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1 h-9" onClick={onClose} disabled={loading}>Batal</Button>
-                        <Button className="flex-1 h-9 bg-emerald-600 hover:bg-emerald-700" onClick={handleVerify} disabled={loading}>
-                            {loading ? "Memproses…" : "Verifikasi"}
-                        </Button>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function BillsPage() {
     const [allBills, setAllBills] = useState<Bill[]>([])
@@ -212,8 +98,6 @@ export default function BillsPage() {
 
     const [formOpen, setFormOpen] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
-    const [proofOpen, setProofOpen] = useState(false)
-    const [verifyOpen, setVerifyOpen] = useState(false)
     const [selected, setSelected] = useState<Bill | null>(null)
 
     const fetchBills = useCallback(async () => {
@@ -259,8 +143,6 @@ export default function BillsPage() {
     const openCreate = () => { setSelected(null); setFormOpen(true) }
     const openEdit   = (b: Bill) => { setSelected(b); setFormOpen(true) }
     const openDelete = (b: Bill) => { setSelected(b); setDeleteOpen(true) }
-    const openProof  = (b: Bill) => { setSelected(b); setProofOpen(true) }
-    const openVerify = (b: Bill) => { setSelected(b); setVerifyOpen(true) }
 
     return (
         <>
@@ -469,23 +351,14 @@ export default function BillsPage() {
                                                 {/* Actions */}
                                                 <TableCell className="text-right pr-5">
                                                     <div className="flex items-center justify-end gap-1">
-                                                        {/* Lihat bukti — hanya jika ada payment */}
-                                                        {bill.payments && (
-                                                            <Button variant="ghost" size="icon"
-                                                                className="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
-                                                                title="Lihat bukti bayar"
-                                                                onClick={() => openProof(bill)}>
-                                                                <Eye size={13} />
-                                                            </Button>
-                                                        )}
-                                                        {/* Verifikasi — hanya jika pending */}
-                                                        {billStatus === "pending" && (
-                                                            <Button variant="ghost" size="icon"
-                                                                className="h-7 w-7 text-muted-foreground hover:text-emerald-600 hover:bg-emerald-50"
-                                                                title="Verifikasi pembayaran"
-                                                                onClick={() => openVerify(bill)}>
-                                                                <ShieldCheck size={13} />
-                                                            </Button>
+                                                        {billStatus === "verified" && (
+                                                            <Link href={`/print/bill/${bill.id}`} target="_blank">
+                                                                <Button variant="ghost" size="icon"
+                                                                    className="h-7 w-7 text-muted-foreground hover:text-blue-600 hover:bg-blue-50"
+                                                                    title="Cetak Struk Pembayaran">
+                                                                    <Printer size={13} />
+                                                                </Button>
+                                                            </Link>
                                                         )}
                                                         <Button variant="ghost" size="icon"
                                                             disabled={billStatus === "verified"}
@@ -564,17 +437,6 @@ export default function BillsPage() {
                 open={deleteOpen}
                 bill={selected}
                 onClose={() => setDeleteOpen(false)}
-                onSuccess={fetchBills}
-            />
-            <ProofDialog
-                open={proofOpen}
-                bill={selected}
-                onClose={() => setProofOpen(false)}
-            />
-            <VerifyDialog
-                open={verifyOpen}
-                bill={selected}
-                onClose={() => setVerifyOpen(false)}
                 onSuccess={fetchBills}
             />
         </>

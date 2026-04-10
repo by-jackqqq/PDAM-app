@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { Phone, ShieldCheck, Hash, AtSign, Calendar, Pencil, Droplets, Mail } from "lucide-react"
 import { api } from "@/lib/api"
-import { Admin } from "@/types/admin"
+import { Customer } from "@/types/customer"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -35,49 +35,49 @@ function ProfileSkeleton() {
 }
 
 export default function ProfilePage() {
-  const [admin, setAdmin] = useState<Admin | null>(null)
+  const [customer, setCustomer] = useState<Customer | null>(null)
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    api.get<{ data: Admin }>("/admins/me")
-      .then(r => setAdmin(r.data.data))
+    api.get<{ data: Customer }>("/customers/me")
+      .then(r => setCustomer(r.data.data))
       .catch(() => { })
   }, [])
 
-  if (!admin) return <ProfileSkeleton />
+  if (!customer) return <ProfileSkeleton />
 
-  const initials = admin.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
+  const initials = customer.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)
 
   const fields = [
     {
       icon: AtSign,
       label: "Username",
-      value: `@${admin.user.username}`,
+      value: `@${customer.user.username}`,
       sub: "Login identity",
     },
     {
       icon: Phone,
       label: "Phone",
-      value: admin.phone,
+      value: customer.phone,
       sub: "Contact number",
     },
     {
       icon: ShieldCheck,
       label: "Role",
-      value: admin.user.role,
+      value: customer.user.role,
       sub: "Access level",
     },
     {
       icon: Hash,
-      label: "Admin ID",
-      value: `#${admin.id}`,
+      label: "customer ID",
+      value: `#${customer.id}`,
       sub: "System identifier",
       mono: true,
     },
-    ...(admin.createdAt ? [{
+    ...(customer.createdAt ? [{
       icon: Calendar,
       label: "Member Since",
-      value: formatDate(admin.createdAt),
+      value: formatDate(customer.createdAt),
       sub: "Account created",
     }] : []),
   ]
@@ -138,10 +138,10 @@ export default function ProfilePage() {
                 </Avatar>
 
                 <div className="mt-3 text-center">
-                  <h2 className="text-base font-bold tracking-tight text-gray-900">{admin.name}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">@{admin.user.username}</p>
+                  <h2 className="text-base font-bold tracking-tight text-gray-900">{customer.name}</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">@{customer.user.username}</p>
                   <Badge className="mt-2 bg-blue-50 text-blue-600 border border-blue-100 font-semibold text-[11px] capitalize hover:bg-blue-50">
-                    {admin.user.role}
+                    {customer.user.role}
                   </Badge>
                 </div>
 
@@ -151,8 +151,8 @@ export default function ProfilePage() {
                 {/* Quick stats */}
                 <div className="w-full grid grid-cols-2 gap-2 text-center">
                   <div className="rounded-xl bg-blue-50 py-2.5 px-2">
-                    <p className="text-xs font-bold text-blue-600">#{admin.id}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Admin ID</p>
+                    <p className="text-xs font-bold text-blue-600">#{customer.id}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">customer ID</p>
                   </div>
                   <div className="rounded-xl bg-blue-50 py-2.5 px-2">
                     <p className="text-xs font-bold text-blue-600">Active</p>
@@ -205,12 +205,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <EditProfileModal
-        admin={admin}
-        open={open}
-        onClose={() => setOpen(false)}
-        onUpdated={setAdmin}
-      />
+      
     </>
   )
 }
